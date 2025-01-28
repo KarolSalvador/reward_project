@@ -1,45 +1,17 @@
-/*********************************************************************
-SSD1306 I2C Library for Raspberry Pi.
-Based on Adafruit SSD1306 Arduino library. Some functions came from Adafruit GFX lib.
 
-Modified by Ilia Penev
-Tested on Raspberry Pi 2 with 0.96 Yellow/Blue OLED
-*********************************************************************/
-
-/*********************************************************************
-This is a library for our Monochrome OLEDs based on SSD1306 drivers
-
-  Pick one up today in the adafruit shop!
-  ------> http://www.adafruit.com/category/63_98
-
-These displays use SPI to communicate, 4 or 5 pins are required to
-interface
-
-Adafruit invests time and resources providing this open source code,
-please support Adafruit and open-source hardware by purchasing
-products from Adafruit!
-
-Written by Limor Fried/Ladyada  for Adafruit Industries.
-BSD license, check license.txt for more information
-All text above, and the splash screen must be included in any redistribution
-*********************************************************************/
 #ifndef SSD1306_I2C_H_
 #define SSD1306_I2C_H_
 
-// Define the size of the display we have attached. This can vary, make sure you
-// have the right size defined or the output will look rather odd!
-// Code has been tested on 128x32 and 128x64 OLED displays
-#define SSD1306_HEIGHT 32
+
+// Definição do tamanho do display
+#define SSD1306_HEIGHT 64
 #define SSD1306_WIDTH 128
 
 #define SSD1306_I2C_ADDR _u(0x3C)
 
 // 400 is usual, but often these can be overclocked to improve display response.
-// Tested at 1000 on both 32 and 84 pixel height devices and it worked.
 #define SSD1306_I2C_CLK 400
-// #define SSD1306_I2C_CLK             1000
 
-// commands (see datasheet)
 #define SSD1306_SET_MEM_MODE _u(0x20)
 #define SSD1306_SET_COL_ADDR _u(0x21)
 #define SSD1306_SET_PAGE_ADDR _u(0x22)

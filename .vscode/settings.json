@@ -37,6 +37,7 @@
     "raspberry-pi-pico.cmakePath": "${HOME}/.pico-sdk/cmake/v3.28.6/bin/cmake",
     "raspberry-pi-pico.ninjaPath": "${HOME}/.pico-sdk/ninja/v1.12.1/ninja",
     "files.associations": {
-        "ws2818b.pio.h": "c"
+        "ws2818b.pio.h": "c",
+        "i2c.h": "c"
     }
 }

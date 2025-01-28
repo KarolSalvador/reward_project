@@ -1,10 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <ctype.h>
 #include "pico/stdlib.h"
 #include "hardware/pwm.h"
-#include "pico/binary_info.h"
 #include "ssd1306.h"
 #include "hardware/i2c.h"
 #include "hardware/pio.h"
@@ -45,7 +43,7 @@ void npInit(uint pin) {
     sm = pio_claim_unused_sm(np_pio, false);
     if (sm < 0) {
         np_pio = pio1;
-        sm = pio_claim_unused_sm(np_pio, true); // Se nenhuma máquina estiver livre, panic!
+        sm = pio_claim_unused_sm(np_pio, true); // tenta alocar uma máquina até que uma esteja livre
     }
 
      // Inicia programa na máquina PIO obtida.
@@ -82,28 +80,36 @@ void npWrite() {
     }
 }
 
-int getIndex(int x, int y) {
+int getIndex(int x, int y) { //cria variáveis x para horizontal e y para vertical
     // Se a linha for par (0, 2, 4), percorremos da esquerda para a direita.
     // Se a linha for ímpar (1, 3), percorremos da direita para a esquerda.
-    if (y % 2 == 0) {
-        return 24-(y * 5 + x); // Linha par (esquerda para direita).
+
+    if (y % 2 == 0) { // verificação se a linha é par ou ímpar
+        return 24-(y * 5 + x); // Linha par (calcula a posição do LED na linha, levando em consideração que   cada linha possui 5 LEDs.).
     } else {
         return 24-(y * 5 + (4 - x)); // Linha ímpar (direita para esquerda).
     }
 }
 
 //função para emitir som
-void emit_sound(int duration_ms, int frequency_hz, int duty_cycle) {
+void emit_sound(int duration_ms, int frequency_hz, int duty_cycle) { //parâmetros de duração, freq e duty
+    //configuração do pino do Buzzer na função para que funcione como um pino PWM
     gpio_set_function(BUZZER_PIN, GPIO_FUNC_PWM);
+
+    //obtenção do número do slice do PWM para poder controlar a modulação do sinal
     uint slice_num = pwm_gpio_to_slice_num(BUZZER_PIN);
 
+    //definição do divisor do relógio para o slice, oq ue irá afetar a frequência do som emitido
     pwm_set_clkdiv(slice_num, 125.0f);
+    //definir o número máximo de ciclos para o PWM
     pwm_set_wrap(slice_num, 1250000 / frequency_hz);
+    //definir o nível de sáida do PWM 
     pwm_set_gpio_level(BUZZER_PIN, (1250000 / frequency_hz) * duty_cycle / 100);
-
+    //habilita o slice para o sinal gerado ser emitido no buzzer
     pwm_set_enabled(slice_num, true);
-
+    //aguarda durante o período de duração do som
     sleep_ms(duration_ms);
+    //desabilita o a saída PWM
     pwm_set_enabled(slice_num, false);
 }
 
@@ -116,6 +122,7 @@ int main() {
     npInit(LED_PIN);
 
     //Desenho dos LEDs
+    //matriz 5x5 onde cada elemento é um LED que é especificado por três valores(representando as cores, RGB)
     int matriz[5][5][3] = {
         {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
         {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 255, 0}},
@@ -124,50 +131,58 @@ int main() {
         {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}
     };
     
+    //loop de atrivuição dos LEDs
     for(int linha = 0; linha < 5; linha++) {
         for(int coluna = 0; coluna < 5; coluna++) {
+            //calcula o índice do LED na sequência
             int posicao = getIndex(linha, coluna);
+
+            //Define a cor do LED na posição calculada
             npSetLED(posicao, matriz[coluna][linha][0], matriz[coluna][linha][1], matriz[coluna][linha][2]);
         }
     }
 
-    i2c_init(i2c0, 400000); //inializa o i2c com taxa de 400kHz
+     //inializa o i2c com taxa de 400kHz
+    i2c_init(i2c0, 400000);
+
+    //configura o SCL no pino 15
     gpio_set_function(15, GPIO_FUNC_I2C); //SCL
+    //configura o SDA no pino 14
     gpio_set_function(14, GPIO_FUNC_I2C); //SDA
     gpio_pull_up(15); //PULL-UP EM SCL
     gpio_pull_up(14); //PULL-UP EM SDA
 
+    //declaração do buffer e da renderização
     uint8_t buf[SSD1306_WIDTH * SSD1306_HEIGHT / 8];
     struct render_area area = {0, 0, SSD1306_WIDTH, SSD1306_HEIGHT};
 
+    //inicializa o display OLED
     SSD1306_init(i2c0);
 
-    //configuração dos pinos
+    //configuração do botão
     gpio_init(BUTTON_PIN);
+    //define como entrada
     gpio_set_dir(BUTTON_PIN, GPIO_IN);
     gpio_pull_up(BUTTON_PIN);
 
+    //configuração do Buzzer
     gpio_init(BUZZER_PIN);
+    //define como saída
     gpio_set_dir(BUZZER_PIN, GPIO_OUT);
 
     //MONITORAR TEMPO QUE O BOTÃO ESTÁ PRESSIONADO
-    bool button_pressed = false;
-    uint32_t press_start_time = 0;
+    bool button_pressed = false; //determinad que o botão não está pressionado inicialmente
+    uint32_t press_start_time = 0; // armazena o tempo que o botão está pressionado iniciado com o valor 0
 
     //configurar renderização
     struct render_area frame_area = {
-        .start_col = 0,
-        .end_col = SSD1306_WIDTH - 1,
-        .start_page = 0,
-        .end_page = (SSD1306_HEIGHT / 8) - 1
+        .start_col = 0, //primeira coluna do eixo X, que começa na primeira coluna
+        .end_col = SSD1306_WIDTH - 1, //ultima coluna do eixo X, que vai até a última coluna
+        .start_page = 0, //primeira página do eixo Y, que começa na primeira linha
+        .end_page = (SSD1306_HEIGHT / 8) - 1 //última página do eixo Y, que vai até a última linha
     };
-    calc_render_area_buflen(&frame_area);
+    calc_render_area_buflen(&frame_area); //calcula a memória necessária para armazenar a área de renderização
 
-    //zerar display
-    /*
-    memset(buf, 0, SSD1306_BUF_LEN);
-    render(buf, &frame_area);
-    */
 
     while(true) {
         //verificar se botão foi pressionado
@@ -197,7 +212,7 @@ int main() {
                 
 
                 //exibir no display
-                /*
+                
                 char *text[] = {
                     "~~Recompensa~~",
                     "~~liberada!~~",
@@ -209,11 +224,8 @@ int main() {
                     WriteString(buf, 5, y, text[i]); //posicionar texto no buffer
                     y += 8; //avançar linha
                 }
-
                 render(buf, &frame_area); // atualiza o display com o novo conteudo do buffer
-                */
-                WriteString(buf, 5, 0, "Recompensa liberada");
-                render(buf, &frame_area);
+                
                 printf("Mensagem exibida no display.\n");
 
                 //aguardar botão liberar
