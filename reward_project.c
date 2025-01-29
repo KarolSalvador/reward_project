@@ -1,13 +1,13 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include "pico/stdlib.h"
-#include "hardware/pwm.h"
-#include "ssd1306.h"
-#include "hardware/i2c.h"
-#include "hardware/pio.h"
-#include "hardware/clocks.h"
-#include "ws2818b.pio.h"
+#include <stdio.h> // Biblioteca padrão do C utilizada para entrada e saída
+#include <string.h> //permitir manipulação de strings como memset e strlen
+#include <stdlib.h> //disponibiliza funções para alocação de memória dinâmica, conversão de números, dentr outros.
+#include "pico/stdlib.h" // biblioteca padrão para RAspberry para GPIO
+#include "hardware/pwm.h" //permite controlar o hardware de PWM
+#include "ssd1306.h" //permite controlar display OLED conectado via I2C
+#include "hardware/i2c.h" //controle do protocolo I2C
+#include "hardware/pio.h" //permite programar e gerenciar máquinas PIO
+#include "hardware/clocks.h" //permite manipular e configurar relógios do sistema que agentam frequência do PWM
+#include "ws2818b.pio.h" //par controle de LEDS usando PIO
 
 //definir botão
 #define BUTTON_PIN 5
@@ -80,6 +80,10 @@ void npWrite() {
     }
 }
 
+// Variável para controle de LEDs
+bool leds_on = false; // Controla se os LEDs estão acesos ou apagados.
+
+
 int getIndex(int x, int y) { //cria variáveis x para horizontal e y para vertical
     // Se a linha for par (0, 2, 4), percorremos da esquerda para a direita.
     // Se a linha for ímpar (1, 3), percorremos da direita para a esquerda.
@@ -138,7 +142,7 @@ int main() {
         {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}
     };
     
-    //loop de atrivuição dos LEDs
+    //loop de atribuição dos LEDs
     for(int linha = 0; linha < 5; linha++) {
         for(int coluna = 0; coluna < 5; coluna++) {
             //calcula o índice do LED na sequência
@@ -198,6 +202,8 @@ int main() {
         if(!gpio_get(BUTTON_PIN)) {
             if(!button_pressed) {
                 button_pressed = true;
+
+                //armazenar tempo em milissegundos  
                 press_start_time = to_ms_since_boot(get_absolute_time());
                 printf("Botão pressionado. Tempo inicial: %u ms\n", press_start_time); //depuração
             }
@@ -206,40 +212,63 @@ int main() {
             uint32_t press_duration = to_ms_since_boot(get_absolute_time()) - press_start_time;
             printf("Botão pressionado por: %u ms\n", press_duration); // Depuração
 
-            //caso botão pressionado por 5 segundos, liberar recompensa
+            //caso botão pressionado por 5 segundos ou mais, liberar recompensa
             if(press_duration >= 5000) {
+                // Verificar se os LEDs não estão acesos
+                if (!leds_on) { 
+                    npWrite(); // Acende os LEDs
+                    leds_on = true;
+                }
+
                 //limpar o display
                 clear_display(buf, &frame_area);
 
                 printf("Recompensa liberada!\n"); //depuração
+
+                //emitir som por 2 milissegundos, com uma frequência de 1000kHz e um duty cycle de 50
                 emit_sound(2000, 1000, 50);
 
-                npWrite(); // Escreve os dados nos LEDs.
-                sleep_ms(2000);
+                //limpa os dados no LED
                 npClear();
-                npWrite();//atualizar matriz com leds apagados.
+                for (int linha = 0; linha < 5; linha++) {
+                    for (int coluna = 0; coluna < 5; coluna++) {
+                        // Calcula a posição do LED na matriz
+                        int posicao = getIndex(linha, coluna);
+
+                        // Define a cor do LED (pode alterar conforme necessidade)
+                        npSetLED(posicao, matriz[coluna][linha][0], matriz[coluna][linha][1], matriz[coluna][linha][2]);
+                    }
+                }
+                // Atualiza os LEDs para refletir a mudança
+                npWrite(); 
+                sleep_ms(1000);
+                //limpa LEDS
+                npClear();
+                //atualiza com LEDS apagados
+                npWrite(); 
                 
 
-                //exibir no display
-                
+                //configuração de texto a ser exibido
                 char *text[] = {
                     " Recompensa ",
                     " liberada! ",
                     " Bom garoto!! "
                 };
 
-                int y = 0;
+                //loop para escrever o texto no buffer
+                int y = 0; //variável da posição vertical
                 for(uint i = 0; i < count_of(text); i++) {
                     WriteString(buf, 5, y, text[i]); //posicionar texto no buffer
                     y += 8; //avançar linha
                 }
-                render(buf, &frame_area); // atualiza o display com o novo conteudo do buffer
+                // atualiza o display com o novo conteudo do buffer
+                render(buf, &frame_area); 
+                //aguarda 5 segundos com o texto no display
                 sleep_ms(5000);
-
                 //limpa o display depois do tempo de espera
                 clear_display(buf, &frame_area);
 
-                //aguardar botão liberar
+                //aguardar botão liberar antes de seguir com a execução
                 while(!gpio_get(BUTTON_PIN)) {
                     tight_loop_contents(); // Economiza energia enquanto espera
                 }
