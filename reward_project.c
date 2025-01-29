@@ -113,6 +113,13 @@ void emit_sound(int duration_ms, int frequency_hz, int duty_cycle) { //parâmetr
     pwm_set_enabled(slice_num, false);
 }
 
+//função para limpar display OLED
+void clear_display(uint8_t *buf, struct render_area *frame_area) {
+    memset(buf, 0, SSD1306_BUF_LEN);  // Limpa o buffer
+    render(buf, frame_area);         // Atualiza o display com o buffer limpo
+}
+
+
 
 int main() {
     // Inicializa entradas e saídas.
@@ -143,7 +150,7 @@ int main() {
     }
 
      //inializa o i2c com taxa de 400kHz
-    i2c_init(i2c0, 400000);
+    i2c_init(i2c1, 400000);
 
     //configura o SCL no pino 15
     gpio_set_function(15, GPIO_FUNC_I2C); //SCL
@@ -157,7 +164,7 @@ int main() {
     struct render_area area = {0, 0, SSD1306_WIDTH, SSD1306_HEIGHT};
 
     //inicializa o display OLED
-    SSD1306_init(i2c0);
+    SSD1306_init(i2c1);
 
     //configuração do botão
     gpio_init(BUTTON_PIN);
@@ -183,6 +190,8 @@ int main() {
     };
     calc_render_area_buflen(&frame_area); //calcula a memória necessária para armazenar a área de renderização
 
+    //limpa o display antes de rodar
+    clear_display(buf, &frame_area);
 
     while(true) {
         //verificar se botão foi pressionado
@@ -190,7 +199,7 @@ int main() {
             if(!button_pressed) {
                 button_pressed = true;
                 press_start_time = to_ms_since_boot(get_absolute_time());
-                printf("Botão pressionado. Tempo inicial: %u ms\n", press_start_time); 
+                printf("Botão pressionado. Tempo inicial: %u ms\n", press_start_time); //depuração
             }
 
             //verificar o tempo que o botão está sendo pressionado
@@ -200,9 +209,9 @@ int main() {
             //caso botão pressionado por 5 segundos, liberar recompensa
             if(press_duration >= 5000) {
                 //limpar o display
-                memset(buf, 0, SSD1306_BUF_LEN);  // Preenche o buffer com zeros (limpando a tela), garantir que não vai sobreescrever
-                render(buf, &frame_area);            // Atualiza o display com o buffer limpo
-                printf("Recompensa liberada!\n");
+                clear_display(buf, &frame_area);
+
+                printf("Recompensa liberada!\n"); //depuração
                 emit_sound(2000, 1000, 50);
 
                 npWrite(); // Escreve os dados nos LEDs.
@@ -214,9 +223,9 @@ int main() {
                 //exibir no display
                 
                 char *text[] = {
-                    "~~Recompensa~~",
-                    "~~liberada!~~",
-                    "~Bom garoto!!~"
+                    " Recompensa ",
+                    " liberada! ",
+                    " Bom garoto!! "
                 };
 
                 int y = 0;
@@ -225,8 +234,10 @@ int main() {
                     y += 8; //avançar linha
                 }
                 render(buf, &frame_area); // atualiza o display com o novo conteudo do buffer
-                
-                printf("Mensagem exibida no display.\n");
+                sleep_ms(5000);
+
+                //limpa o display depois do tempo de espera
+                clear_display(buf, &frame_area);
 
                 //aguardar botão liberar
                 while(!gpio_get(BUTTON_PIN)) {

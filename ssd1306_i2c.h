@@ -4,7 +4,7 @@
 
 
 // Definição do tamanho do display
-#define SSD1306_HEIGHT 64
+#define SSD1306_HEIGHT 32
 #define SSD1306_WIDTH 128
 
 #define SSD1306_I2C_ADDR _u(0x3C)
