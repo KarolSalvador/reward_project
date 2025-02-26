@@ -40,5 +40,11 @@ Essa automação pode ser integrada a um protótipo real com **sensor de peso e 
 ## 📌 Futuras Melhorias  
 - Implementação de **sensor de peso real** para substituir a simulação com o botão.  
 - Desenvolvimento de um **dispenser automatizado** para liberação do petisco.  
-- Criação de um **aplicativo ou interface web** para monitoramento remoto do uso da plataforma.  
+- Criação de um **aplicativo ou interface web** para monitoramento remoto do uso da plataforma.
+
+  ## Documentação
+
+A documentação completa do projeto pode ser acessada através do link abaixo:
+
+[Documentação do Projeto](https://drive.google.com/file/d/1_vFkJwQ29XB8MmSmpSljxVmyhspyqFyR/view?usp=sharing)
 
